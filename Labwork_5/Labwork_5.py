@@ -81,8 +81,8 @@ retrived_data = []
 
 name = "message" #data
 data = bytearray(name, "utf8")
-psp_1 = bytearray(os.urandom(len(name) * 3)) #container
-psp_2 = bytearray(os.urandom(int(len(name) * 2))) #key
+psp_1 = bytearray(os.urandom(len(data)*3)) #container
+psp_2 = bytearray(os.urandom(len(data)*2)) #key
 
 #to binary
 to_bit_list(data,name_list)
