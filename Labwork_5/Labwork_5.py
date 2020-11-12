@@ -1,6 +1,31 @@
 import os
-import random
 import math
+
+def better_number(key):
+    '''
+    Preferable digit to be modified.
+    '''
+    count = 0
+    for x in key:
+        count+=x.count('1')
+    if (count > (len(key)*8)/2): 
+        return '1';
+    else:
+        return '0';
+
+def pack(data):
+    '''
+    Pack retrieved data into octets.
+    '''
+    data_copy = data.copy()
+    data.clear()
+    buf = ""
+    for i in range(len(data_copy)):
+        if ((i % 8 == 0 and i!=0)):
+            data.append(buf)
+            buf = ""
+        buf += str(data_copy[i])
+
 def to_bit_list(array,name_list):
     for byte in array:
         buf = bin(byte)
@@ -11,7 +36,7 @@ def index_to_actual(array,index):
     column = index % 8
     return array[row][column]
 
-def to_container(altered,container,psp1_list):
+def to_container(altered,container,psp1_list,t=True):
     '''Modifying container with altered key.
         psp1_list - container;
        container - container copy;
@@ -21,34 +46,43 @@ def to_container(altered,container,psp1_list):
         b = psp1_list[i]
         a = altered[i]
         container.append(bin(int(b,2) ^ int(a,2))[2:].zfill(8))
-    if (len(container) < len(psp1_list)):
+    if ((len(container) < len(psp1_list)) and t):
         container.extend(psp1_list[len(container):])
 
-def to_altered(psp2_list,altered,name_list):
+def to_altered(psp2_list,altered,name_list,t=True):
     '''Modifying key with data.
         psp2_list - key;
        altered - key copy;
        name_list - data;
     '''
+    #p - preferable digit to be modified with data (0|1)
+    p = better_number(psp2_list)
     global_index = 0
     for i in range(len(psp2_list) * 8):
         row = math.floor(i / 8)
         column = i % 8
         b = psp2_list[row][column]
-        if psp2_list[row][column] == '1' and (global_index < len(name_list) * 8):
-            altered[row] = psp2_list[row][:column] + str(int(index_to_actual(name_list,global_index)) ^ int(b)) + psp2_list[row][column + 1:]
+        if psp2_list[row][column] == p and (global_index < len(name_list) * 8):
+            if (not t):
+                altered.append(int(b) ^ int(name_list[row][column]))
+            else:
+                altered[row] = (altered[row][:column] + 
+                                str(int(index_to_actual(name_list,global_index)) ^ int(b)) + 
+                                altered[row][column + 1:])
             global_index+=1
 #variables
 name_list = []
 psp2_list = []
 psp1_list = []
+
 new_list = []
 container = []
+retrived_data = []
 
-name = "abc" #data
+name = "message" #data
 data = bytearray(name, "utf8")
 psp_1 = bytearray(os.urandom(len(name) * 3)) #container
-psp_2 = bytearray(os.urandom(int(len(name) * 2.5))) #key
+psp_2 = bytearray(os.urandom(int(len(name) * 2))) #key
 
 #to binary
 to_bit_list(data,name_list)
@@ -62,22 +96,20 @@ print("Key: ",psp2_list,sep="\n")
 
 #key copy for modification
 altered = psp2_list.copy()
-#influencing key 1's with data
+#influencing key's 1 or 0 with data
 to_altered(psp2_list,altered,name_list)
 print("Altered key: ",altered,sep="\n")
-#putting altered key to container
+#putting altered key into container
 to_container(altered,container,psp1_list)
 print("Altered container: ",container,sep="\n")
 #transmission occurring here
 print("~" * 10,"Imaginary transmission:","~" * 10,sep="\n")
 #extracting altered key from container
-to_container(psp2_list,new_list,container)
-print("Altered key(extracted): ",altered,sep="\n")
-#retrived_data=[None] * len(altered)
-#to_altered(new_list,retrived_data,name_list);
-
-#print(altered)
-#print(container)
-#print(new_list)
-#print(retrived_data)
-#print("name:",retrived_data)
+to_container(psp1_list,new_list,container,t=False)
+#discarding container's 'tail'
+new_list = new_list[:len(psp2_list)]
+print("Altered key(extracted): ",new_list,sep="\n")
+#extracting data
+to_altered(psp2_list,retrived_data,new_list,t=False);
+pack(retrived_data);
+print("Data(extracted): ",retrived_data,sep="\n")
